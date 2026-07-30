@@ -1,0 +1,15 @@
+{
+  "type": "ChArUco",
+  "squares_x": 8,
+  "squares_y": 7,
+  "aruco_dict": "DICT_5X5_1000",
+  "square_size": 0.06,
+  "marker_size": 0.045,
+  "size_note": "\uc2e4\uce21 \uce58\uc218 \uc544\ub2d8 \u2014 \ube44\uc728(0.75)\ub9cc \uc758\ubbf8. \ub0b4\ubd80 \ud30c\ub77c\ubbf8\ud130\ub294 \ubcf4\ub4dc \uc2a4\ucf00\uc77c\uacfc \ubb34\uad00.",
+  "legacy_pattern": false,
+  "camera": "AVM \ub9ac\uadf8 front_right (\uc5b4\uc548)",
+  "image_size": [
+    1920,
+    1200
+  ]
+}

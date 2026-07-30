@@ -1,0 +1,10 @@
+# 주의: opencv-python 5.x 는 aruco·fisheye API가 바뀌어 노트북이 동작하지 않습니다.
+#       반드시 4.x 계열(<5)을 사용하세요.
+opencv-python==4.10.0.84
+numpy==2.1.3
+matplotlib==3.9.2
+pandas==2.2.3
+
+# 노트북 실행 환경
+jupyterlab==4.2.5
+ipykernel==6.29.5
