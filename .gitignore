@@ -1,0 +1,35 @@
+# ── 파이썬 가상환경 ─────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ── 파이썬 캐시/빌드 ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── 노트북 ──────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# ── 실습 실행 산출물 (노트북이 자동 생성 — 저장소에 올리지 않음) ─
+# det_cache: ChArUco 검출 캐시 — 삭제해도 수 초 내 재생성
+# out:       record_sheet.csv · 비교 PNG · results.json
+det_cache/
+out/
+
+# ── 도구/에디터 설정 ────────────────────────────────────────────
+.claude/
+.vscode/
+.idea/
+
+# ── OS 잡파일 ───────────────────────────────────────────────────
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
