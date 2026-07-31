@@ -1,0 +1,5 @@
+opencv-python>=4.7
+numpy
+matplotlib
+pillow
+pillow-heif        # iPhone HEIC 사진 읽기 (확장자가 .jpeg여도 내용이 HEIC인 경우 포함)

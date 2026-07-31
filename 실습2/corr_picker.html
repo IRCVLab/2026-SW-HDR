@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>대응점 클릭 툴 — corr_picker (avm_picker 미리보기판)</title>
+<style>
+ body{font-family:'Malgun Gothic',AppleGothic,sans-serif;margin:0;background:#0E2841;color:#fff}
+ #bar{display:flex;gap:14px;align-items:center;padding:10px 14px;background:#0E2841}
+ #guide{font-size:16px;font-weight:700;color:#FFC000}
+ #prog{font-size:13px;color:#9fb6cc}
+ button{background:#1E80E1;color:#fff;border:0;border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer}
+ button.gray{background:#5a6b7c} button:disabled{background:#3a4a5a;cursor:default}
+ #wrap{display:flex;gap:8px;padding:0 8px 8px}
+ .panel{flex:1;background:#08131f;border-radius:8px;overflow:hidden;position:relative}
+ .panel h3{margin:0;padding:6px 10px;font-size:13px;background:#123;color:#cfe3f5}
+ canvas{display:block;width:100%;height:72vh;cursor:crosshair;touch-action:none}
+ .hint{padding:6px 12px;font-size:12px;color:#8ea6bd}
+ input[type=file]{font-size:11px;color:#9fb6cc;max-width:230px}
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="guide">로딩 중…</div><div id="prog"></div>
+  <button id="undo" class="gray">되돌리기 (Z)</button>
+  <button id="reset" class="gray">전체 초기화</button>
+  <button id="export">JSON 내보내기</button>
+  <span class="hint">휠 = 확대 · 드래그 = 이동 · 클릭 = 점 찍기</span>
+</div>
+<div id="wrap">
+  <div class="panel"><h3>① 과거 사진 <input type="file" id="fOld" accept="image/*"></h3><canvas id="cOld"></canvas></div>
+  <div class="panel"><h3>② 현재 사진 <input type="file" id="fNew" accept="image/*"></h3><canvas id="cNew"></canvas></div>
+</div>
+<div class="hint">순서: 각 랜드마크마다 [과거 → 현재] 클릭. 15점 프로토콜(원하면 그 이상 자유 추가, 최소 4쌍) 완료 후 JSON 내보내기 → 파일을 <b>my_corr/timewarp_corr.json</b> 으로 저장.
+기본 이미지는 data/timewarp/ 에서 자동 로드하며, 안 보이면 위의 파일 선택으로 직접 여세요. (실습 3 avm_picker의 미리보기판)</div>
+<script>
+const NAMES=['페디먼트 꼭대기','페디먼트 베이스 좌','페디먼트 베이스 우',
+ '기둥1 상단','기둥2 상단','기둥3 상단','기둥4 상단','기둥5 상단','기둥6 상단',
+ '기둥1 하단','기둥2 하단','기둥3 하단','기둥4 하단','기둥5 하단','기둥6 하단'];
+const pts=[]; let phase=0; // 0=과거 클릭 대기, 1=현재 클릭 대기
+const nameFor=i=> i<NAMES.length? NAMES[i] : `추가 ${i-NAMES.length+1}`;
+function View(canvas, fileInput, defSrc, label){
+  const v={img:new Image(), s:1, tx:0, ty:0, canvas, ready:false, label};
+  const ctx=canvas.getContext('2d');
+  function fit(){
+    const r=canvas.getBoundingClientRect(); canvas.width=r.width; canvas.height=r.height;
+    if(!v.ready) return;
+    v.s=Math.min(canvas.width/v.img.width, canvas.height/v.img.height)*0.98;
+    v.tx=(canvas.width-v.img.width*v.s)/2; v.ty=(canvas.height-v.img.height*v.s)/2; draw();
+  }
+  function draw(){
+    ctx.fillStyle='#08131f'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(!v.ready){ctx.fillStyle='#567';ctx.font='14px sans-serif';
+      ctx.fillText('이미지를 선택하세요', 20, 30); return;}
+    ctx.imageSmoothingEnabled=v.s<3;
+    ctx.setTransform(v.s,0,0,v.s,v.tx,v.ty);
+    ctx.drawImage(v.img,0,0);
+    ctx.setTransform(1,0,0,1,0,0);
+    pts.forEach((p,i)=>{
+      const q=(label==='old')?p.old:p.new; if(!q) return;
+      const x=q[0]*v.s+v.tx, y=q[1]*v.s+v.ty;
+      ctx.strokeStyle=(i===pts.length-1&&((label==='old'&&phase===1)||(label==='new'&&false)))?'#FFC000':'#2E9E4F';
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(x-7,y);ctx.lineTo(x+7,y);ctx.moveTo(x,y-7);ctx.lineTo(x,y+7);ctx.stroke();
+      ctx.fillStyle='#FFC000';ctx.font='bold 12px sans-serif';ctx.fillText(i+1,x+7,y-7);
+    });
+  }
+  v.draw=draw; v.fit=fit;
+  v.toImg=(cx,cy)=>[ (cx-v.tx)/v.s, (cy-v.ty)/v.s ];
+  canvas.addEventListener('wheel',e=>{e.preventDefault();
+    const r=canvas.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top;
+    const f=e.deltaY<0?1.25:0.8, ns=Math.min(40,Math.max(0.05,v.s*f));
+    v.tx=cx-(cx-v.tx)*(ns/v.s); v.ty=cy-(cy-v.ty)*(ns/v.s); v.s=ns; draw();},{passive:false});
+  let drag=null;
+  canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,tx:v.tx,ty:v.ty,moved:false};
+    canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',e=>{if(!drag)return;
+    const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+    if(Math.abs(dx)+Math.abs(dy)>4)drag.moved=true;
+    v.tx=drag.tx+dx; v.ty=drag.ty+dy; draw();});
+  canvas.addEventListener('pointerup',e=>{
+    if(drag&&!drag.moved){const r=canvas.getBoundingClientRect();
+      click(label, v.toImg(e.clientX-r.left,e.clientY-r.top));}
+    drag=null;});
+  fileInput.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;
+    v.img=new Image(); v.img.onload=()=>{v.ready=true;fit();update();};
+    v.img.src=URL.createObjectURL(f);});
+  v.img.onload=()=>{v.ready=true;fit();update();};
+  v.img.onerror=()=>{v.ready=false;draw();update();};
+  v.img.src=defSrc;
+  new ResizeObserver(fit).observe(canvas);
+  return v;
+}
+function idx(){return phase===0?pts.length:pts.length-1;}
+function update(){
+  const i=idx(), g=document.getElementById('guide'), done=pts.filter(p=>p.new).length;
+  if(i>=NAMES.length&&phase===0)
+    g.textContent=`프로토콜 15점 완료 — 원하면 계속 추가 클릭 [다음: ${nameFor(i)}]`;
+  else
+    g.textContent=`다음 [${i+1}${i<NAMES.length?'/'+NAMES.length:''}] ${nameFor(i)} — ${phase===0?'① 과거':'② 현재'} 사진 클릭`;
+  document.getElementById('prog').textContent=
+    `저장된 쌍: ${done} (프로토콜 ${Math.min(done,NAMES.length)}/${NAMES.length}`+
+    (done>NAMES.length?` + 추가 ${done-NAMES.length}`:'')+')';
+  document.getElementById('export').disabled=!(done>=4&&phase===0);
+  vOld.draw(); vNew.draw();
+}
+function click(label, xy){
+  xy=[+xy[0].toFixed(1),+xy[1].toFixed(1)];
+  if(label==='old'&&phase===0){pts.push({name:nameFor(pts.length),old:xy,new:null});phase=1;}
+  else if(label==='new'&&phase===1){pts[pts.length-1].new=xy;phase=0;}
+  else return; update();
+}
+document.getElementById('undo').onclick=()=>{ if(phase===1){pts.pop();phase=0;}
+  else if(pts.length){pts[pts.length-1].new=null;phase=1;} update(); };
+window.addEventListener('keydown',e=>{if(e.key==='z'||e.key==='Z')document.getElementById('undo').click();});
+document.getElementById('reset').onclick=()=>{pts.length=0;phase=0;update();};
+document.getElementById('export').onclick=()=>{
+  const data={image_old:{file:'hyu_old.jpg',w:vOld.img.width,h:vOld.img.height},
+              image_new:{file:'hyu_modern.jpg',w:vNew.img.width,h:vNew.img.height},
+              protocol:'페디먼트 3점 + 기둥 6개 상·하단 12점 (+자유 추가)', points:pts};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));
+  a.download='timewarp_corr.json'; a.click();
+};
+const vOld=View(document.getElementById('cOld'),document.getElementById('fOld'),'data/timewarp/hyu_old.jpg','old');
+const vNew=View(document.getElementById('cNew'),document.getElementById('fNew'),'data/timewarp/hyu_modern.jpg','new');
+update();
+</script>
+</body>
+</html>
