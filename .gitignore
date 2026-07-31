@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # ── 파이썬 가상환경 ─────────────────────────────────────────────
 .venv/
 venv/
@@ -33,3 +34,6 @@ out/
 ._*
 Thumbs.db
 desktop.ini
+=======
+.DS_Store
+>>>>>>> Stashed changes
